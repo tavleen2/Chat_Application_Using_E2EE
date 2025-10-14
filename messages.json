@@ -1,0 +1,44 @@
+[
+  {
+    "direction": "sent",
+    "to": "Bob",
+    "ciphertext": "vM+kk1MLy64GSznZMt6cxGmgf09kXm/E",
+    "plaintext": "Hello Bob, this is E2EE!",
+    "ts": "2025-10-13T00:05:44"
+  },
+  {
+    "direction": "received",
+    "from": "Alice",
+    "ciphertext": "vM+kk1MLy64GSznZMt6cxGmgf09kXm/E",
+    "plaintext": "Hello Bob, this is E2EE!",
+    "ts": "2025-10-13T00:05:44"
+  },
+  {
+    "direction": "sent",
+    "to": "Alice",
+    "ciphertext": "VV6pkLOQjw==",
+    "plaintext": "Got it!",
+    "ts": "2025-10-13T00:06:56"
+  },
+  {
+    "direction": "received",
+    "from": "Bob",
+    "ciphertext": "VV6pkLOQjw==",
+    "plaintext": "Got it!",
+    "ts": "2025-10-13T00:06:56"
+  },
+  {
+    "direction": "sent",
+    "to": "Bob",
+    "ciphertext": "pgYHbggvFzgq8MDC9+YnbCwFFmhIctoM",
+    "plaintext": "Hello Bob, this is E2EE!",
+    "ts": "2025-10-13T17:37:47"
+  },
+  {
+    "direction": "received",
+    "from": "Alice",
+    "ciphertext": "pgYHbggvFzgq8MDC9+YnbCwFFmhIctoM",
+    "plaintext": "Hello Bob, this is E2EE!",
+    "ts": "2025-10-13T17:37:47"
+  }
+]
