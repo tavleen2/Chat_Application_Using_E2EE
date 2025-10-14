@@ -1,19 +1,17 @@
-# server.py
 import socket
 import threading
 import json
 
-HOST = "127.0.0.1"
-PORT = 5000
-
-clients = {}        # username -> socket
-public_keys = {}    # username -> PEM string
-
+HOST, PORT = "127.0.0.1", 5000
+clients = {}      
+pubkeys = {}      
 lock = threading.Lock()
 
 def send_json(sock, obj):
-    data = (json.dumps(obj) + "\n").encode("utf-8")
-    sock.sendall(data)
+    try:
+        sock.sendall((json.dumps(obj) + "\n").encode("utf-8"))
+    except Exception:
+        pass
 
 def recv_lines(sock):
     buf = b""
@@ -29,7 +27,7 @@ def recv_lines(sock):
         yield buf.decode("utf-8")
 
 def handle_client(conn, addr):
-    username = None
+    user_lc = None
     try:
         for line in recv_lines(conn):
             try:
@@ -37,42 +35,39 @@ def handle_client(conn, addr):
             except json.JSONDecodeError:
                 continue
 
-            mtype = msg.get("type")
+            t = msg.get("type")
 
-            if mtype == "register":
-                # {type:"register", username:"Alice", public_key:"PEM"}
+            if t == "register":
+                user = (msg.get("username") or "").strip()
+                user_lc = user.lower()
                 with lock:
-                    username = msg["username"]
-                    clients[username] = conn
-                    public_keys[username] = msg["public_key"]
-                print(f"[SERVER] {username} registered. PubKey stored.")
-                send_json(conn, {"type": "register_ok"})
+                    clients[user_lc] = conn
+                    pubkeys[user_lc] = msg["public_key"]
+                print(f"[SERVER] {user} registered. Public key stored.")
+                send_json(conn, {"type": "register_ok", "you": user})
 
-            elif mtype == "get_pubkey":
-                # {type:"get_pubkey", target:"Bob"}
-                target = msg.get("target")
+            elif t == "get_pubkey":
+                target = (msg.get("target") or "").strip().lower()
                 with lock:
-                    key = public_keys.get(target)
+                    key = pubkeys.get(target)
                 if key:
                     send_json(conn, {"type": "pubkey", "username": target, "public_key": key})
                 else:
-                    send_json(conn, {"type": "error", "message": f"No public key for {target}"})
+                    send_json(conn, {"type": "error", "message": f"No public key for {msg.get('target')}"})
 
-            elif mtype in ("session_key", "message"):
-                # Forward to target; log encrypted payload visibly
-                to_user = msg.get("to")
+            elif t in ("session_key", "message"):
+                to_disp = (msg.get("to") or "").strip()
+                to_lc = to_disp.lower()
                 with lock:
-                    target_conn = clients.get(to_user)
-                if target_conn:
-                    # Log encrypted content on server (cannot decrypt)
-                    if mtype == "session_key":
-                        print(f"[SERVER] Encrypted session_key from {msg.get('from')} -> {to_user}: {msg.get('payload')[:60]}...")
+                    dst = clients.get(to_lc)
+                if dst:
+                    if t == "session_key":
+                        print(f"[SERVER] Encrypted session_key {msg.get('from')} -> {to_disp}: {str(msg.get('payload'))[:60]}...")
                     else:
-                        # message has nonce/ciphertext/tag; log ciphertext
-                        print(f"[SERVER] Encrypted message from {msg.get('from')} -> {to_user}: {msg.get('ciphertext')[:60]}...")
-                    send_json(target_conn, msg)
+                        print(f"[SERVER] Encrypted message {msg.get('from')} -> {to_disp}: {str(msg.get('ciphertext'))[:60]}...")
+                    send_json(dst, msg)
                 else:
-                    send_json(conn, {"type": "error", "message": f"{to_user} not connected"})
+                    send_json(conn, {"type": "error", "message": f"{to_disp} not connected"})
 
             else:
                 send_json(conn, {"type": "error", "message": "Unknown message type"})
@@ -80,12 +75,12 @@ def handle_client(conn, addr):
     except ConnectionResetError:
         pass
     finally:
-        if username:
+        if user_lc:
             with lock:
-                if clients.get(username) is conn:
-                    del clients[username]
+                if clients.get(user_lc) is conn:
+                    del clients[user_lc]
         conn.close()
-        print(f"[SERVER] {username or addr} disconnected.")
+        print(f"[SERVER] {(user_lc or addr)} disconnected.")
 
 def main():
     print(f"[SERVER] Listening on {HOST}:{PORT}")
@@ -94,8 +89,8 @@ def main():
         s.bind((HOST, PORT))
         s.listen()
         while True:
-            conn, addr = s.accept()
-            threading.Thread(target=handle_client, args=(conn, addr), daemon=True).start()
+            c, a = s.accept()
+            threading.Thread(target=handle_client, args=(c, a), daemon=True).start()
 
 if __name__ == "__main__":
     main()
