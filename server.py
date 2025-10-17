@@ -8,6 +8,7 @@ pubkeys = {}
 lock = threading.Lock()
 
 def send_json(sock, obj):
+
     try:
         sock.sendall((json.dumps(obj) + "\n").encode("utf-8"))
     except Exception:
