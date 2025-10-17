@@ -2,8 +2,7 @@ import socket
 import json
 import base64
 from pathlib import Path
-from datetime import datetime
-
+from datetime import datetime  
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP, AES
 from Crypto.Random import get_random_bytes
@@ -16,6 +15,21 @@ def b64e(b: bytes) -> str:
 def b64d(s: str) -> bytes:
     return base64.b64decode(s.encode("utf-8"))
 
+import os
+LOG_PATH = Path(__file__).resolve().parent / "messages.json"
+
+def append_jsonl(entry: dict):
+    e = dict(entry)
+    if "ts" not in e:
+        e["ts"] = datetime.now().isoformat(timespec="seconds")
+    line = json.dumps(e, ensure_ascii=False) + "\n"
+    fd = os.open(str(LOG_PATH), os.O_APPEND | os.O_CREAT | os.O_WRONLY)
+    try:
+        os.write(fd, line.encode("utf-8"))
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
 class SenderApp:
     def __init__(self, me_disp: str, peer_disp: str):
         self.me_disp = me_disp.strip() or "Alice"
@@ -23,31 +37,17 @@ class SenderApp:
         self.peer_disp = peer_disp.strip() or "Bob"
         self.peer = self.peer_disp.lower()
 
-        self.cwd = Path.cwd()
-        self.log_root = self.cwd / "messages.json"
-        self.log_user = self.cwd / f"messages_{self.me}.json"
-        for p in (self.log_root, self.log_user):
-            if not p.exists():
-                p.write_text("[]", encoding="utf-8")
-        print(f"[{self.me_disp}] Logging to: {self.log_root} and {self.log_user}")
+        print(f"[{self.me_disp}] Logging to: {LOG_PATH}")
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.rsa = RSA.generate(2048)
         self.pub_pem = self.rsa.publickey().export_key().decode("utf-8")
 
-        self.peer_pub = {}      
-        self.sessions = {}      
+        self.peer_pub = {}     
+        self.sessions = {}     
 
     def _save_log(self, entry: dict):
-        e = dict(entry)
-        e["ts"] = datetime.now().isoformat(timespec="seconds")
-        for p in (self.log_root, self.log_user):
-            try:
-                data = json.loads(p.read_text(encoding="utf-8"))
-            except Exception:
-                data = []
-            data.append(e)
-            p.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        append_jsonl(entry)
 
     def _send_json(self, obj: dict):
         self.sock.sendall((json.dumps(obj) + "\n").encode("utf-8"))
@@ -75,7 +75,6 @@ class SenderApp:
         if self.peer in self.sessions:
             return
 
-        # One request only
         self._send_json({"type": "get_pubkey", "target": self.peer_disp})
         print(f"[{self.me_disp}] Waiting for {self.peer_disp} to connect...")
 
@@ -104,10 +103,7 @@ class SenderApp:
                 print(f"[{self.me_disp}] Session key established with {self.peer_disp}.")
                 return
 
-            elif mtype == "wait":
-                continue
-
-            elif mtype == "register_ok":
+            elif mtype in ("wait", "register_ok"):
                 continue
 
             elif mtype == "error":
@@ -145,6 +141,7 @@ class SenderApp:
         print(f"[{self.me_disp}] Decrypted from {sender}: {pt}")
 
         self._save_log({
+            "who": self.me_disp,
             "direction": "received",
             "from": sender,
             "ciphertext": b64e(ct_b),
@@ -161,12 +158,15 @@ class SenderApp:
 
             pkt = self._encrypt_packet(text)
             self._send_json({"type": "message", "from": self.me_disp, "to": self.peer_disp, **pkt})
+
             self._save_log({
+                "who": self.me_disp,
                 "direction": "sent",
                 "to": self.peer_disp,
                 "ciphertext": pkt["ciphertext"],
                 "plaintext": text
             })
+
             print(f"[{self.me_disp}] Sent encrypted message to {self.peer_disp}. Waiting for reply...")
 
             msg = self._recv_line()  
