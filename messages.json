@@ -1,0 +1,13 @@
+{
+    {"who": "Tavleen", "direction": "sent", "to": "Karan", "ciphertext": "o4Lh", "plaintext": "Hii", "ts": "2025-10-17T18:14:48"}
+    {"who": "Karan", "direction": "received", "from": "Tavleen", "ciphertext": "o4Lh", "plaintext": "Hii", "ts": "2025-10-17T18:14:48"}
+}
+{
+    {"who": "Tavleen", "direction": "received", "from": "Karan", "ciphertext": "tCUWMQRjwvs=", "plaintext": "Hello :)", "ts": "2025-10-17T18:15:06"}
+    {"who": "Tavleen", "direction": "sent", "to": "Karan", "ciphertext": "5FLrzPQnY4B2ivAz8A==", "plaintext": "How are you ?", "ts": "2025-10-17T18:15:28"}
+    
+}
+{
+    {"who": "Karan", "direction": "sent", "to": "Tavleen", "ciphertext": "RSu432w=", "plaintext": "Good.", "ts": "2025-10-17T18:15:37"}
+    {"who": "Tavleen", "direction": "received", "from": "Karan", "ciphertext": "RSu432w=", "plaintext": "Good.", "ts": "2025-10-17T18:15:37"}
+}
